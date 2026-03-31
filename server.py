@@ -189,6 +189,15 @@ def _normalize_agent_type(agent_type: str) -> str:
     return agent_type if agent_type in AGENT_ROLE_PROMPTS else "default"
 
 
+def _agent_spawn_policy_tool(sandbox: str) -> str:
+    """Map agent spawn to the appropriate policy bucket.
+
+    Read-only agents behave like investigation/review tasks, while writable
+    agents are treated like execute-style tasks.
+    """
+    return "review" if sandbox == "read-only" else "execute"
+
+
 def _summarize_agent_report(report: str) -> str:
     lines = [line.strip() for line in report.splitlines() if line.strip()]
     if not lines:
@@ -1034,7 +1043,10 @@ async def spawn_codex_agent(
     """Start a background Codex worker with a Claude Code-style lifecycle."""
     resolved_type = _normalize_agent_type(agent_type)
     resolved_sandbox = sandbox or _default_agent_sandbox(resolved_type)
-    blocked = _enforce_sandbox("execute", resolved_sandbox)
+    blocked = _enforce_sandbox(
+        _agent_spawn_policy_tool(resolved_sandbox),
+        resolved_sandbox,
+    )
     if blocked:
         return {"ok": False, "error": blocked}
     err = _validate(prompt, resolved_sandbox, model)

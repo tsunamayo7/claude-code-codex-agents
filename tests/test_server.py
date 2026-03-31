@@ -18,6 +18,7 @@ from server import (
     CodexTrace,
     CodexAgentManager,
     SessionManager,
+    _agent_spawn_policy_tool,
     _validate,
     _enforce_sandbox,
     parse_jsonl_events,
@@ -182,6 +183,12 @@ class TestSecurityPolicy:
 # =============================================================================
 # テスト: JSONLパース
 # =============================================================================
+
+    def test_agent_spawn_policy_tool(self):
+        assert _agent_spawn_policy_tool("read-only") == "review"
+        assert _agent_spawn_policy_tool("workspace-write") == "execute"
+        assert _agent_spawn_policy_tool("danger-full-access") == "execute"
+
 
 class TestJsonlParsing:
     """JSONLイベント解析のテスト"""
