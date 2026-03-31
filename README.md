@@ -1,4 +1,4 @@
-# helix-codex
+# claude-code-codex-agents
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://python.org)
@@ -7,22 +7,22 @@
 
 **Give Claude Code structured Codex traces, not raw output.**
 
-For Claude Code users who want GPT-5.4 as a real tool: helix-codex parses the **entire JSONL event stream** from Codex CLI and returns a structured execution report -- which tools it used, which files it touched, how long it took, and what went wrong. No other Codex MCP bridge does this.
+For Claude Code users who want GPT-5.4 as a real tool: claude-code-codex-agents parses the **entire JSONL event stream** from Codex CLI and returns a structured execution report -- which tools it used, which files it touched, how long it took, and what went wrong. No other Codex MCP bridge does this.
 
 ```mermaid
 graph LR
-    A["Claude Code<br/>(Opus 4.6)"] -->|MCP Protocol| B["helix-codex<br/>MCP Server"]
+    A["Claude Code<br/>(Opus 4.6)"] -->|MCP Protocol| B["claude-code-codex-agents<br/>MCP Server"]
     B -->|"subprocess + stdin"| C[Codex CLI]
     C -->|JSONL stream| B
     C -->|API call| D["OpenAI API<br/>(GPT-5.4)"]
     B -->|Structured Report| A
 ```
 
-## Without vs With helix-codex
+## Without vs With claude-code-codex-agents
 
 **Without** -- You call Codex CLI and get a wall of text. You don't know what tools it used, what files it changed, or if it actually succeeded.
 
-**With helix-codex** -- Claude Code gets a structured execution trace:
+**With claude-code-codex-agents** -- Claude Code gets a structured execution trace:
 
 ```
 [Codex gpt-5.4] Completed
@@ -42,11 +42,11 @@ graph LR
 Fixed the authentication logic. Token validation order was incorrect.
 ```
 
-## Why helix-codex?
+## Why claude-code-codex-agents?
 
 There are 6+ Codex MCP bridges on GitHub. Here's what makes this one different:
 
-| | Other bridges | helix-codex |
+| | Other bridges | claude-code-codex-agents |
 |---|---|---|
 | Output | Raw text dump | **Structured trace** (tools, files, timing, errors) |
 | Parallel tasks | 1 at a time | **Up to 6 simultaneous** |
@@ -76,11 +76,11 @@ npm install -g @openai/codex
 codex login
 ```
 
-### 2. Install helix-codex
+### 2. Install claude-code-codex-agents
 
 ```bash
-git clone https://github.com/tsunamayo7/helix-codex.git
-cd helix-codex
+git clone https://github.com/tsunamayo7/claude-code-codex-agents.git
+cd claude-code-codex-agents
 uv sync
 ```
 
@@ -91,10 +91,10 @@ uv sync
 ```json
 {
   "mcpServers": {
-    "helix-codex": {
+    "claude-code-codex-agents": {
       "type": "stdio",
       "command": "uv",
-      "args": ["run", "--directory", "/path/to/helix-codex", "python", "server.py"],
+      "args": ["run", "--directory", "/path/to/claude-code-codex-agents", "python", "server.py"],
       "env": { "PYTHONUTF8": "1" }
     }
   }
@@ -107,9 +107,9 @@ uv sync
 ```json
 {
   "mcpServers": {
-    "helix-codex": {
+    "claude-code-codex-agents": {
       "command": "uv",
-      "args": ["run", "--directory", "/path/to/helix-codex", "python", "server.py"],
+      "args": ["run", "--directory", "/path/to/claude-code-codex-agents", "python", "server.py"],
       "env": { "PYTHONUTF8": "1" }
     }
   }
@@ -125,9 +125,9 @@ Add to your MCP settings:
 
 ```json
 {
-  "helix-codex": {
+  "claude-code-codex-agents": {
     "command": "uv",
-    "args": ["run", "--directory", "/path/to/helix-codex", "python", "server.py"],
+    "args": ["run", "--directory", "/path/to/claude-code-codex-agents", "python", "server.py"],
     "env": { "PYTHONUTF8": "1" }
   }
 }
@@ -198,7 +198,7 @@ Instruction: Check error handling in src/api.py
 ```mermaid
 sequenceDiagram
     participant C as Claude Code
-    participant H as helix-codex
+    participant H as claude-code-codex-agents
     participant X as Codex CLI
     participant O as OpenAI API
 
@@ -231,8 +231,8 @@ sequenceDiagram
 
 ```bash
 # Setup
-git clone https://github.com/tsunamayo7/helix-codex.git
-cd helix-codex
+git clone https://github.com/tsunamayo7/claude-code-codex-agents.git
+cd claude-code-codex-agents
 uv sync --extra dev
 
 # Run tests (56 tests)

@@ -1,5 +1,5 @@
 [project]
-name = "helix-codex"
+name = "claude-code-codex-agents"
 version = "0.2.0"
 description = "MCP server bridging Claude Code to Codex CLI (GPT-5.4) with full JSONL trace visualization"
 readme = "README.md"

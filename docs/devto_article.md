@@ -12,15 +12,15 @@ You're deep in a Claude Code session. The code looks good — but something nags
 
 You open a second terminal, paste the code into Codex CLI, wait for GPT-5.4's response, then manually copy the feedback back. You've done this dance a dozen times today, and it's 2026 — this should be automated.
 
-That's exactly why I built **helix-codex**.
+That's exactly why I built **claude-code-codex-agents**.
 
-## What Is helix-codex?
+## What Is claude-code-codex-agents?
 
 An MCP server that lets Claude Code call Codex CLI (GPT-5.4) as a structured tool — not a raw text dump, but a parsed execution trace with timing, tool calls, files touched, and error classification.
 
 ```mermaid
 graph LR
-    A["Claude Code<br/>(Opus 4.6)"] -->|MCP Protocol| B["helix-codex<br/>MCP Server"]
+    A["Claude Code<br/>(Opus 4.6)"] -->|MCP Protocol| B["claude-code-codex-agents<br/>MCP Server"]
     B -->|"subprocess + stdin"| C[Codex CLI]
     C -->|JSONL stream| B
     C -->|API call| D["OpenAI API<br/>(GPT-5.4)"]
@@ -31,9 +31,9 @@ One `server.py` file (~820 lines). No databases, no Docker, no config files. Jus
 
 ## Before vs After
 
-**Before helix-codex** — You call Codex CLI from terminal and get a wall of unstructured text. You don't know what tools it used, what files it changed, or if it actually succeeded. Copying results back to Claude Code is manual and error-prone.
+**Before claude-code-codex-agents** — You call Codex CLI from terminal and get a wall of unstructured text. You don't know what tools it used, what files it changed, or if it actually succeeded. Copying results back to Claude Code is manual and error-prone.
 
-**After helix-codex** — Claude Code gets a structured execution trace it can reason about:
+**After claude-code-codex-agents** — Claude Code gets a structured execution trace it can reason about:
 
 ```
 [Codex gpt-5.4] Completed
@@ -59,7 +59,7 @@ Claude sees exactly what happened — timing, tools, files, success/failure — 
 
 ### 1. Adversarial Review in 15.7 Seconds
 
-Claude Code wrote a Python module. I asked helix-codex to have GPT-5.4 review it. The `review` tool returned in **15.7 seconds** with findings classified by severity:
+Claude Code wrote a Python module. I asked claude-code-codex-agents to have GPT-5.4 review it. The `review` tool returned in **15.7 seconds** with findings classified by severity:
 
 ```
 [Codex Review] GPT-5.4 Review Result
@@ -109,9 +109,9 @@ Instruction: Check error handling in src/api.py
 
 Total wall-clock time: **7.8 seconds** (not 17.1s sequential). Each task gets its own structured trace.
 
-### 4. GPT-5.4 Reviews helix-codex's Own Code
+### 4. GPT-5.4 Reviews claude-code-codex-agents's Own Code
 
-The most meta test: I pointed GPT-5.4 at helix-codex's own `server.py`. It found **3 CRITICAL issues**:
+The most meta test: I pointed GPT-5.4 at claude-code-codex-agents's own `server.py`. It found **3 CRITICAL issues**:
 
 - A regex pattern that could cause catastrophic backtracking on crafted input
 - A session list that grew unboundedly (no max-size enforcement in one path)
@@ -123,7 +123,7 @@ All three were real bugs. All three were fixed. **The tool improved itself.**
 
 There are 6+ Codex MCP bridges on GitHub. Here's the honest comparison:
 
-| | Other bridges | helix-codex |
+| | Other bridges | claude-code-codex-agents |
 |---|---|---|
 | Output format | Raw text dump | **Structured trace** (tools, files, timing) |
 | Parallel tasks | 1 at a time | **Up to 6 simultaneous** |
@@ -132,14 +132,14 @@ There are 6+ Codex MCP bridges on GitHub. Here's the honest comparison:
 | Tests | Few or none | **56 tests** |
 | Code review | Basic or none | **Adversarial Review Loop** |
 
-The key differentiator: helix-codex parses the **entire JSONL event stream** from Codex CLI. Every tool call, every file operation, every error gets captured in a structured `CodexTrace` object. Other bridges just capture stdout.
+The key differentiator: claude-code-codex-agents parses the **entire JSONL event stream** from Codex CLI. Every tool call, every file operation, every error gets captured in a structured `CodexTrace` object. Other bridges just capture stdout.
 
 ## Architecture: How the JSONL Parsing Works
 
 ```mermaid
 sequenceDiagram
     participant C as Claude Code
-    participant H as helix-codex
+    participant H as claude-code-codex-agents
     participant X as Codex CLI
     participant O as OpenAI API
 
@@ -170,8 +170,8 @@ npm install -g @openai/codex
 codex login
 
 # 2. Clone and install
-git clone https://github.com/tsunamayo7/helix-codex.git
-cd helix-codex
+git clone https://github.com/tsunamayo7/claude-code-codex-agents.git
+cd claude-code-codex-agents
 uv sync
 
 # 3. Add to Claude Code (~/.claude/settings.json)
@@ -180,10 +180,10 @@ uv sync
 ```json
 {
   "mcpServers": {
-    "helix-codex": {
+    "claude-code-codex-agents": {
       "type": "stdio",
       "command": "uv",
-      "args": ["run", "--directory", "/path/to/helix-codex", "python", "server.py"],
+      "args": ["run", "--directory", "/path/to/claude-code-codex-agents", "python", "server.py"],
       "env": { "PYTHONUTF8": "1" }
     }
   }
@@ -200,10 +200,10 @@ That's it. Claude Code now has GPT-5.4 as a structured tool.
 
 ## Links
 
-- **GitHub**: [tsunamayo7/helix-codex](https://github.com/tsunamayo7/helix-codex)
+- **GitHub**: [tsunamayo7/claude-code-codex-agents](https://github.com/tsunamayo7/claude-code-codex-agents)
 - **License**: MIT
 - **Requirements**: Python 3.12+, Codex CLI, OpenAI account
 
 ---
 
-*helix-codex is part of the Helix toolkit — a collection of MCP servers for extending Claude Code with real capabilities. Star the repo if cross-model AI collaboration interests you.*
+*claude-code-codex-agents is part of the Helix toolkit — a collection of MCP servers for extending Claude Code with real capabilities. Star the repo if cross-model AI collaboration interests you.*

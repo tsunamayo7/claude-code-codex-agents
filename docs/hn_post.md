@@ -6,7 +6,7 @@ Show HN: MCP server that gives Claude Code structured traces from Codex CLI (GPT
 
 ## URL
 
-https://github.com/tsunamayo7/helix-codex
+https://github.com/tsunamayo7/claude-code-codex-agents
 
 ## Text
 
@@ -14,7 +14,7 @@ I built an MCP server that lets Claude Code delegate tasks to OpenAI's Codex CLI
 
 The problem: Codex CLI outputs a wall of JSONL events. If you pipe that into Claude Code, it has no idea what tools were called, which files changed, or whether the task actually succeeded.
 
-helix-codex parses the full JSONL event stream and returns a structured report: tool calls with status, files touched, execution time, and errors. Claude Code can then make informed decisions about what to do next.
+claude-code-codex-agents parses the full JSONL event stream and returns a structured report: tool calls with status, files touched, execution time, and errors. Claude Code can then make informed decisions about what to do next.
 
 Key technical details:
 

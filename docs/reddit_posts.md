@@ -1,4 +1,4 @@
-# Reddit Posts for helix-codex
+# Reddit Posts for claude-code-codex-agents
 
 ---
 
@@ -8,11 +8,11 @@
 
 **Body:**
 
-I got tired of Claude Code burning through my 5-hour limit on tasks that a cheaper model could handle. So I built [helix-codex](https://github.com/tsunamayo7/helix-codex) -- an MCP server that lets Claude Code delegate work to Codex CLI (GPT-5.4) and get back **structured execution reports**, not raw text dumps.
+I got tired of Claude Code burning through my 5-hour limit on tasks that a cheaper model could handle. So I built [claude-code-codex-agents](https://github.com/tsunamayo7/claude-code-codex-agents) -- an MCP server that lets Claude Code delegate work to Codex CLI (GPT-5.4) and get back **structured execution reports**, not raw text dumps.
 
 **What makes it different from the 6+ other Codex bridges:**
 
-Every other bridge is a thin wrapper -- call Codex, get text back. helix-codex parses the **entire JSONL event stream** and returns which tools were used, which files were touched, timing, and errors. Claude actually knows what happened.
+Every other bridge is a thin wrapper -- call Codex, get text back. claude-code-codex-agents parses the **entire JSONL event stream** and returns which tools were used, which files were touched, timing, and errors. Claude actually knows what happened.
 
 **Real numbers from my setup:**
 
@@ -25,7 +25,7 @@ The best part: I ran Claude Agent + Codex in parallel to compare singleton patte
 
 **Other highlights:** up to 6 parallel tasks, adversarial review loop (GPT-5.4 challenges Claude's code), terminal injection prevention, 56 tests.
 
-GitHub: https://github.com/tsunamayo7/helix-codex
+GitHub: https://github.com/tsunamayo7/claude-code-codex-agents
 
 ---
 
@@ -35,9 +35,9 @@ GitHub: https://github.com/tsunamayo7/helix-codex
 
 **Body:**
 
-If you're hitting context limits on complex prompts, I built [helix-codex](https://github.com/tsunamayo7/helix-codex) to offload work to Codex CLI (GPT-5.4) via MCP.
+If you're hitting context limits on complex prompts, I built [claude-code-codex-agents](https://github.com/tsunamayo7/claude-code-codex-agents) to offload work to Codex CLI (GPT-5.4) via MCP.
 
-**The problem with existing bridges:** they pipe text in and text out. Claude has no idea what tools Codex used, what files it touched, or if it even succeeded. helix-codex parses every JSONL event from Codex and returns a structured trace:
+**The problem with existing bridges:** they pipe text in and text out. Claude has no idea what tools Codex used, what files it touched, or if it even succeeded. claude-code-codex-agents parses every JSONL event from Codex and returns a structured trace:
 
 ```
 [Codex gpt-5.4] Completed in 8.3s
@@ -57,6 +57,6 @@ One thing that surprised me: running both models on the same problem produces ge
 
 56 tests, sandbox security with 3-tier policy, terminal injection prevention.
 
-GitHub: https://github.com/tsunamayo7/helix-codex
+GitHub: https://github.com/tsunamayo7/claude-code-codex-agents
 
 Setup is just `uv tool install` + add to `claude_desktop_config.json`.

@@ -1,4 +1,4 @@
-"""helix-codex テストスイート
+"""claude-code-codex-agents テストスイート
 
 モックJSONLを使用してCodex CLIに依存しないユニットテスト。
 """

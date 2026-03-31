@@ -1,8 +1,8 @@
 """
-helix-codex: Claude CodeがCodex CLI(GPT-5.4)を手足として使いこなすためのMCPサーバー。
+claude-code-codex-agents: Claude CodeがCodex CLI(GPT-5.4)を手足として使いこなすためのMCPサーバー。
 
 アーキテクチャ:
-  Claude Code (司令塔) → helix-codex MCP → Codex CLI → OpenAI API (GPT-5.4)
+  Claude Code (司令塔) → claude-code-codex-agents MCP → Codex CLI → OpenAI API (GPT-5.4)
                                 ↓
                       JSONLストリーム解析 → 構造化レポート
 
@@ -32,7 +32,7 @@ from typing import Optional
 
 from fastmcp import FastMCP
 
-mcp = FastMCP("helix-codex")
+mcp = FastMCP("claude-code-codex-agents")
 
 # デフォルト設定
 DEFAULT_MODEL = "gpt-5.4"
@@ -794,7 +794,7 @@ async def status() -> str:
     try:
         codex_path = _find_codex()
         if not codex_path:
-            return "[helix-codex Error] Codex CLIが見つかりません"
+            return "[claude-code-codex-agents Error] Codex CLIが見つかりません"
         proc = await asyncio.create_subprocess_exec(
             codex_path, "--version",
             stdout=asyncio.subprocess.PIPE,
@@ -813,7 +813,7 @@ async def status() -> str:
             if latest else "セッション: なし"
         )
 
-        return f"""[helix-codex Status]
+        return f"""[claude-code-codex-agents Status]
 Codex CLI: {version}
 認証: {"✅ 認証済み" if auth_path.exists() else "❌ 未認証"}
 設定ファイル: {"✅ 存在" if config_path.exists() else "❌ なし"}
@@ -823,7 +823,7 @@ Codex CLI: {version}
 {latest_info}
 ツール数: 11 (execute, trace_execute, parallel_execute, review, explain, generate, discuss, session_continue, session_list, status)"""
     except Exception as e:
-        return f"[helix-codex Error] Codex CLI確認失敗: {e}"
+        return f"[claude-code-codex-agents Error] Codex CLI確認失敗: {e}"
 
 
 if __name__ == "__main__":
