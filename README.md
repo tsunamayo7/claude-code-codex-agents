@@ -5,9 +5,13 @@
 [![Tests](https://img.shields.io/badge/tests-56%20passed-brightgreen.svg)]()
 [![MCP Compatible](https://img.shields.io/badge/MCP-compatible-purple.svg)](https://modelcontextprotocol.io)
 
+**[日本語版 README はこちら](README_ja.md)**
+
 **Give Claude Code structured Codex traces, not raw output.**
 
 For Claude Code users who want GPT-5.4 as a real tool: claude-code-codex-agents parses the **entire JSONL event stream** from Codex CLI and returns a structured execution report -- which tools it used, which files it touched, how long it took, and what went wrong. No other Codex MCP bridge does this.
+
+![Architecture Overview](docs/infographic_en.png)
 
 ```mermaid
 graph LR
