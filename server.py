@@ -26,6 +26,7 @@ import json
 import re
 import shutil
 import time
+import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
@@ -159,6 +160,238 @@ class SessionManager:
 
 # シングルトン
 sessions = SessionManager()
+
+
+AGENT_ROLE_PROMPTS = {
+    "default": (
+        "You are a Claude Code-style Codex sub-agent. "
+        "Complete the assigned software task fully, keep the work pragmatic, "
+        "and return concise high-signal results."
+    ),
+    "explorer": (
+        "You are a read-heavy Claude Code-style explorer agent. "
+        "Focus on investigation, concrete findings, and file references. "
+        "Avoid file edits unless the caller explicitly asks for changes."
+    ),
+    "worker": (
+        "You are an implementation-focused Claude Code-style worker agent. "
+        "Make targeted changes, run relevant checks, and report what changed, "
+        "what was verified, and any residual risk."
+    ),
+}
+
+
+def _default_agent_sandbox(agent_type: str) -> str:
+    return "read-only" if agent_type == "explorer" else "workspace-write"
+
+
+def _normalize_agent_type(agent_type: str) -> str:
+    return agent_type if agent_type in AGENT_ROLE_PROMPTS else "default"
+
+
+def _summarize_agent_report(report: str) -> str:
+    lines = [line.strip() for line in report.splitlines() if line.strip()]
+    if not lines:
+        return ""
+    summary_lines = lines[:6]
+    return _sanitize("\n".join(summary_lines))[:1200]
+
+
+@dataclass
+class CodexAgentTurn:
+    prompt: str
+    success: bool
+    summary: str
+    report: str
+    thread_id: Optional[str]
+    finished_at: float
+
+
+@dataclass
+class CodexAgentRecord:
+    agent_id: str
+    description: str
+    agent_type: str
+    model: str
+    sandbox: str
+    cwd: Optional[str]
+    created_at: float
+    updated_at: float
+    status: str = "idle"
+    last_prompt: str = ""
+    last_summary: str = ""
+    last_report: str = ""
+    last_thread_id: Optional[str] = None
+    last_success: Optional[bool] = None
+    history: list[CodexAgentTurn] = field(default_factory=list)
+    current_task: Optional[asyncio.Task] = field(default=None, repr=False)
+    closed: bool = False
+
+
+class CodexAgentManager:
+    def __init__(self, max_agents: int = 16):
+        self._agents: dict[str, CodexAgentRecord] = {}
+        self._order: list[str] = []
+        self._max_agents = max_agents
+
+    def create(
+        self,
+        description: str,
+        agent_type: str,
+        model: str,
+        sandbox: str,
+        cwd: Optional[str],
+    ) -> CodexAgentRecord:
+        normalized_type = _normalize_agent_type(agent_type)
+        resolved_sandbox = sandbox or _default_agent_sandbox(normalized_type)
+        now = time.time()
+        agent = CodexAgentRecord(
+            agent_id=f"codex-{uuid.uuid4().hex[:8]}",
+            description=description.strip(),
+            agent_type=normalized_type,
+            model=model,
+            sandbox=resolved_sandbox,
+            cwd=cwd,
+            created_at=now,
+            updated_at=now,
+        )
+        self._agents[agent.agent_id] = agent
+        self._order.append(agent.agent_id)
+        self._trim_idle_agents()
+        return agent
+
+    def _trim_idle_agents(self) -> None:
+        if len(self._order) <= self._max_agents:
+            return
+        removable: list[str] = []
+        for agent_id in self._order:
+            agent = self._agents.get(agent_id)
+            if not agent:
+                removable.append(agent_id)
+                continue
+            if agent.current_task is None and (agent.closed or agent.status in {"completed", "failed"}):
+                removable.append(agent_id)
+            if len(self._order) - len(removable) <= self._max_agents:
+                break
+        for agent_id in removable:
+            self._agents.pop(agent_id, None)
+            if agent_id in self._order:
+                self._order.remove(agent_id)
+
+    def get(self, agent_id: str) -> Optional[CodexAgentRecord]:
+        return self._agents.get(agent_id)
+
+    def list_all(self) -> list[CodexAgentRecord]:
+        return [self._agents[agent_id] for agent_id in reversed(self._order) if agent_id in self._agents]
+
+    def _build_prompt(self, agent: CodexAgentRecord, prompt: str) -> str:
+        sections = [AGENT_ROLE_PROMPTS[agent.agent_type]]
+        if agent.description:
+            sections.append(f"Agent description:\n{agent.description}")
+        if agent.history:
+            history_lines = []
+            for turn in agent.history[-3:]:
+                history_lines.append(f"- Previous instruction: {turn.prompt[:400]}")
+                if turn.thread_id:
+                    history_lines.append(f"  Thread: {turn.thread_id}")
+                if turn.summary:
+                    history_lines.append(f"  Result summary:\n{turn.summary[:1000]}")
+            sections.append("Prior agent context:\n" + "\n".join(history_lines))
+        sections.append(f"Current assignment:\n{prompt.strip()}")
+        return "\n\n".join(sections)
+
+    async def _run_turn(
+        self,
+        agent: CodexAgentRecord,
+        prompt: str,
+        timeout: int,
+    ) -> None:
+        agent.status = "running"
+        agent.updated_at = time.time()
+        agent.last_prompt = prompt
+        try:
+            result = await run_codex(
+                prompt=self._build_prompt(agent, prompt),
+                model=agent.model,
+                sandbox=agent.sandbox,
+                cwd=agent.cwd,
+                timeout=timeout,
+            )
+            report = result.get("content", "")
+            summary = _summarize_agent_report(report)
+            agent.last_summary = summary
+            agent.last_report = report
+            agent.last_thread_id = result.get("thread_id")
+            agent.last_success = bool(result.get("success"))
+            agent.history.append(
+                CodexAgentTurn(
+                    prompt=prompt,
+                    success=bool(result.get("success")),
+                    summary=summary,
+                    report=report,
+                    thread_id=result.get("thread_id"),
+                    finished_at=time.time(),
+                )
+            )
+            agent.status = "completed" if result.get("success") else "failed"
+        except asyncio.CancelledError:
+            agent.status = "closed"
+            agent.last_success = False
+            agent.last_summary = "Agent run was cancelled before completion."
+            agent.last_report = agent.last_summary
+            raise
+        finally:
+            agent.updated_at = time.time()
+            agent.current_task = None
+
+    def start(self, agent: CodexAgentRecord, prompt: str, timeout: int) -> CodexAgentRecord:
+        if agent.closed:
+            raise ValueError("Agent is already closed.")
+        if agent.current_task is not None:
+            raise ValueError("Agent is already running.")
+        agent.current_task = asyncio.create_task(self._run_turn(agent, prompt, timeout))
+        return agent
+
+    async def wait(self, agent: CodexAgentRecord, timeout: int) -> dict:
+        if agent.current_task is None:
+            return self.snapshot(agent)
+        try:
+            await asyncio.wait_for(asyncio.shield(agent.current_task), timeout=timeout)
+        except asyncio.TimeoutError:
+            pass
+        return self.snapshot(agent)
+
+    def close(self, agent: CodexAgentRecord) -> CodexAgentRecord:
+        if agent.current_task is not None:
+            raise ValueError("Agent is still running. Wait for completion before closing it.")
+        agent.closed = True
+        agent.status = "closed"
+        agent.updated_at = time.time()
+        return agent
+
+    def snapshot(self, agent: CodexAgentRecord) -> dict:
+        return {
+            "ok": True,
+            "agent_id": agent.agent_id,
+            "description": agent.description,
+            "agent_type": agent.agent_type,
+            "model": agent.model,
+            "sandbox": agent.sandbox,
+            "cwd": agent.cwd,
+            "status": agent.status,
+            "closed": agent.closed,
+            "history_count": len(agent.history),
+            "last_prompt": agent.last_prompt,
+            "last_summary": agent.last_summary,
+            "last_thread_id": agent.last_thread_id,
+            "last_success": agent.last_success,
+            "last_report": agent.last_report,
+            "created_at": agent.created_at,
+            "updated_at": agent.updated_at,
+        }
+
+
+codex_agents = CodexAgentManager()
 
 
 # =============================================================================
@@ -789,6 +1022,90 @@ async def session_list() -> str:
 # =============================================================================
 
 @mcp.tool()
+async def spawn_codex_agent(
+    prompt: str,
+    description: str = "",
+    agent_type: str = "worker",
+    cwd: str = "",
+    model: str = DEFAULT_MODEL,
+    sandbox: str = "",
+    timeout: int = DEFAULT_TIMEOUT,
+) -> dict:
+    """Start a background Codex worker with a Claude Code-style lifecycle."""
+    resolved_type = _normalize_agent_type(agent_type)
+    resolved_sandbox = sandbox or _default_agent_sandbox(resolved_type)
+    blocked = _enforce_sandbox("execute", resolved_sandbox)
+    if blocked:
+        return {"ok": False, "error": blocked}
+    err = _validate(prompt, resolved_sandbox, model)
+    if err:
+        return {"ok": False, "error": err["content"]}
+
+    agent = codex_agents.create(
+        description=description,
+        agent_type=resolved_type,
+        model=model,
+        sandbox=resolved_sandbox,
+        cwd=cwd or None,
+    )
+    codex_agents.start(agent, prompt, timeout)
+    return codex_agents.snapshot(agent)
+
+
+@mcp.tool()
+async def send_codex_agent_input(
+    agent_id: str,
+    message: str,
+    timeout: int = DEFAULT_TIMEOUT,
+) -> dict:
+    """Continue an existing background Codex agent with a new instruction."""
+    agent = codex_agents.get(agent_id)
+    if not agent:
+        return {"ok": False, "error": f"Unknown agent_id: {agent_id}"}
+    try:
+        codex_agents.start(agent, message, timeout)
+    except ValueError as e:
+        return {"ok": False, "error": str(e), "agent_id": agent_id}
+    return codex_agents.snapshot(agent)
+
+
+@mcp.tool()
+async def wait_codex_agent(
+    agent_id: str,
+    timeout: int = 30,
+) -> dict:
+    """Wait for a background Codex agent to finish its current turn."""
+    agent = codex_agents.get(agent_id)
+    if not agent:
+        return {"ok": False, "error": f"Unknown agent_id: {agent_id}"}
+    return await codex_agents.wait(agent, timeout)
+
+
+@mcp.tool()
+async def list_codex_agents() -> dict:
+    """List all tracked background Codex agents."""
+    agents = [codex_agents.snapshot(agent) for agent in codex_agents.list_all()]
+    return {
+        "ok": True,
+        "count": len(agents),
+        "agents": agents,
+    }
+
+
+@mcp.tool()
+async def close_codex_agent(agent_id: str) -> dict:
+    """Close an idle Codex agent and keep its last known result."""
+    agent = codex_agents.get(agent_id)
+    if not agent:
+        return {"ok": False, "error": f"Unknown agent_id: {agent_id}"}
+    try:
+        codex_agents.close(agent)
+    except ValueError as e:
+        return {"ok": False, "error": str(e), "agent_id": agent_id}
+    return codex_agents.snapshot(agent)
+
+
+@mcp.tool()
 async def status() -> str:
     """Codex CLIの状態とセッション情報を確認"""
     try:
@@ -807,6 +1124,8 @@ async def status() -> str:
         auth_path = Path.home() / ".codex" / "auth.json"
 
         session_count = len(sessions.list_all())
+        agent_list = codex_agents.list_all()
+        active_agents = sum(1 for agent in agent_list if agent.current_task is not None)
         latest = sessions.get_latest()
         latest_info = (
             f"最新セッション: {latest.thread_id} ({latest.model})"
@@ -820,8 +1139,9 @@ Codex CLI: {version}
 デフォルトモデル: {DEFAULT_MODEL}
 デフォルトサンドボックス: {DEFAULT_SANDBOX}
 セッション数: {session_count}
+エージェント数: {len(agent_list)} (running: {active_agents})
 {latest_info}
-ツール数: 11 (execute, trace_execute, parallel_execute, review, explain, generate, discuss, session_continue, session_list, status)"""
+ツール数: 15 (execute, trace_execute, parallel_execute, review, explain, generate, discuss, session_continue, session_list, spawn_codex_agent, send_codex_agent_input, wait_codex_agent, list_codex_agents, close_codex_agent, status)"""
     except Exception as e:
         return f"[claude-code-codex-agents Error] Codex CLI確認失敗: {e}"
 

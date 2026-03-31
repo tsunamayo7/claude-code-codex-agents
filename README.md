@@ -56,7 +56,7 @@ There are 6+ Codex MCP bridges on GitHub. Here's what makes this one different:
 | Parallel tasks | 1 at a time | **Up to 6 simultaneous** |
 | Session continuity | Stateless | **threadId persistence** across calls |
 | Security | Pass-through | **3-tier sandbox + terminal injection prevention** |
-| Tests | Few or none | **56 tests** (parsing, security, sessions, edge cases) |
+| Tests | Few or none | **59 tests** (parsing, security, sessions, edge cases, agent lifecycle) |
 | Review | Basic or none | **Adversarial Review Loop** (GPT-5.4 challenges Claude's code) |
 
 ## Key Features
@@ -64,12 +64,13 @@ There are 6+ Codex MCP bridges on GitHub. Here's what makes this one different:
 - **Full JSONL Trace Parsing** -- Every Codex event (tool calls, file ops, errors) parsed into a structured report
 - **Parallel Execution** -- Run up to 6 Codex tasks simultaneously via `parallel_execute`
 - **Session Management** -- Continue previous threads with `session_continue` (threadId persistence)
+- **Agent Lifecycle** -- Run Codex as a background Claude Code-style worker via `spawn_codex_agent`, `send_codex_agent_input`, and `wait_codex_agent`
 - **Adversarial Review Loop** -- GPT-5.4 reviews Claude's code from a different perspective
 - **Sandbox Security** -- 3-tier policy (read-only / workspace-write / danger-full-access) + terminal injection prevention
 - **Cross-Model Discussion** -- Get GPT-5.4's opinion on design decisions via `discuss`
 - **Zero External Dependencies** -- Just FastMCP + Codex CLI. No databases, no Docker, no config files
 - **Japanese Native** -- Full Japanese prompt and report support
-- **56 Tests** -- Comprehensive coverage including security, parsing, session management, and edge cases
+- **59 Tests** -- Comprehensive coverage including security, parsing, session management, agent lifecycle, and edge cases
 
 ## Quick Start
 
@@ -152,7 +153,22 @@ Add to your MCP settings:
 | `discuss` | Get GPT-5.4's perspective on design decisions | read-only |
 | `session_continue` | Continue a previous Codex thread | workspace-write |
 | `session_list` | List session history with thread IDs | - |
+| `spawn_codex_agent` | Launch a background Codex worker with `default` / `explorer` / `worker` roles | role-based |
+| `send_codex_agent_input` | Continue a background Codex worker with follow-up instructions | same as agent |
+| `wait_codex_agent` | Wait for an agent turn and fetch the last structured result | - |
+| `list_codex_agents` | Inspect tracked background Codex agents | - |
+| `close_codex_agent` | Close an idle Codex agent | - |
 | `status` | Check Codex CLI status and auth | - |
+
+## Claude Code-Style Agents
+
+The new agent lifecycle tools let Claude Code treat Codex more like a persistent sub-agent than a one-shot CLI call.
+
+- Use `spawn_codex_agent` to start a background worker with a role preset:
+  `default` for balanced execution, `explorer` for read-heavy investigation, `worker` for implementation.
+- Use `send_codex_agent_input` to continue the same worker after you read its last result.
+- Use `wait_codex_agent` to poll for completion without blocking other work.
+- Use `list_codex_agents` and `close_codex_agent` to manage idle workers.
 
 ## Real-World Example: Adversarial Code Review
 
@@ -239,7 +255,7 @@ git clone https://github.com/tsunamayo7/claude-code-codex-agents.git
 cd claude-code-codex-agents
 uv sync --extra dev
 
-# Run tests (56 tests)
+# Run tests (59 tests)
 uv run pytest tests/ -v
 
 # Run server directly

@@ -16,6 +16,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from server import (
     CodexTrace,
+    CodexAgentManager,
     SessionManager,
     _validate,
     _enforce_sandbox,
@@ -499,6 +500,76 @@ class TestSessionManager:
 # =============================================================================
 # テスト: エッジケース
 # =============================================================================
+
+class TestCodexAgentManager:
+    @pytest.mark.asyncio
+    async def test_agent_lifecycle(self, monkeypatch):
+        async def fake_run_codex(prompt: str, **_kwargs):
+            return {
+                "success": True,
+                "content": f"report for: {prompt.splitlines()[-1]}",
+                "thread_id": "thread_agent_1",
+                "model": "gpt-5.4",
+                "trace": None,
+            }
+
+        monkeypatch.setattr("server.run_codex", fake_run_codex)
+
+        mgr = CodexAgentManager()
+        agent = mgr.create(
+            description="Investigate auth flow",
+            agent_type="worker",
+            model="gpt-5.4",
+            sandbox="workspace-write",
+            cwd=None,
+        )
+        mgr.start(agent, "Inspect src/auth.py", timeout=10)
+
+        snapshot = await mgr.wait(agent, timeout=1)
+        assert snapshot["status"] == "completed"
+        assert snapshot["history_count"] == 1
+        assert snapshot["last_thread_id"] == "thread_agent_1"
+        assert snapshot["last_success"] is True
+        assert "Inspect src/auth.py" in snapshot["last_report"]
+
+    @pytest.mark.asyncio
+    async def test_agent_rejects_parallel_start(self, monkeypatch):
+        async def slow_run_codex(**_kwargs):
+            await asyncio.sleep(0.05)
+            return {
+                "success": True,
+                "content": "done",
+                "thread_id": "thread_agent_2",
+                "model": "gpt-5.4",
+                "trace": None,
+            }
+
+        monkeypatch.setattr("server.run_codex", slow_run_codex)
+
+        mgr = CodexAgentManager()
+        agent = mgr.create(
+            description="Parallel test",
+            agent_type="worker",
+            model="gpt-5.4",
+            sandbox="workspace-write",
+            cwd=None,
+        )
+        mgr.start(agent, "First turn", timeout=10)
+        with pytest.raises(ValueError):
+            mgr.start(agent, "Second turn", timeout=10)
+        await mgr.wait(agent, timeout=1)
+
+    def test_explorer_defaults_to_read_only(self):
+        mgr = CodexAgentManager()
+        agent = mgr.create(
+            description="Read-only investigation",
+            agent_type="explorer",
+            model="gpt-5.4",
+            sandbox="",
+            cwd=None,
+        )
+        assert agent.sandbox == "read-only"
+
 
 class TestEdgeCases:
     """境界値・エッジケースのテスト"""
