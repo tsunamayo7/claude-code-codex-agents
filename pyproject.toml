@@ -1,0 +1,21 @@
+[project]
+name = "helix-codex"
+version = "0.2.0"
+description = "MCP server bridging Claude Code to Codex CLI (GPT-5.4) with full JSONL trace visualization"
+readme = "README.md"
+requires-python = ">=3.12"
+license = {text = "MIT"}
+dependencies = [
+    "fastmcp>=3.1.1",
+    "httpx>=0.28.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
