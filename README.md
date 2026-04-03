@@ -2,7 +2,7 @@
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://python.org)
-[![Tests](https://img.shields.io/badge/tests-56%20passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-59%20passed-brightgreen.svg)]()
 [![MCP Compatible](https://img.shields.io/badge/MCP-compatible-purple.svg)](https://modelcontextprotocol.io)
 
 **[日本語版 README はこちら](README_ja.md)**
@@ -280,6 +280,15 @@ uv run python server.py
 - [uv](https://github.com/astral-sh/uv) (recommended) or pip
 
 ## Related Projects
+
+### Helix Ecosystem
+
+- [helix-ai-studio](https://github.com/tsunamayo7/helix-ai-studio) — All-in-one AI chat studio with 7 providers, RAG, MCP tools, and pipeline
+- [helix-pilot](https://github.com/tsunamayo7/helix-pilot) — GUI automation MCP server — AI controls Windows desktop via local Vision LLM
+- [helix-agent](https://github.com/tsunamayo7/helix-agent) — Extend Claude Code with local Ollama models — cut token costs by 60-80%
+- [helix-sandbox](https://github.com/tsunamayo7/helix-sandbox) — Secure sandbox MCP server — Docker + Windows Sandbox
+
+### Alternative Codex Bridges
 
 - [codex-plugin-cc](https://github.com/openai/codex-plugin-cc) -- Official OpenAI plugin for Claude Code
 - [codex-mcp-server](https://github.com/tuannvm/codex-mcp-server) -- Alternative Codex MCP bridge (Node.js)

@@ -239,6 +239,15 @@ uv run python server.py
 
 ## 関連プロジェクト
 
+### Helix エコシステム
+
+- [helix-ai-studio](https://github.com/tsunamayo7/helix-ai-studio) — オールインワンAIチャットスタジオ（7プロバイダー、RAG、MCPツール、パイプライン）
+- [helix-pilot](https://github.com/tsunamayo7/helix-pilot) — GUI自動操作MCPサーバー — ローカルVision LLMでWindowsデスクトップを操作
+- [helix-agent](https://github.com/tsunamayo7/helix-agent) — Claude Codeをローカル Ollama モデルで拡張 — トークンコスト60-80%削減
+- [helix-sandbox](https://github.com/tsunamayo7/helix-sandbox) — セキュアサンドボックスMCPサーバー — Docker + Windows Sandbox
+
+### 代替Codexブリッジ
+
 - [codex-plugin-cc](https://github.com/openai/codex-plugin-cc) -- OpenAI公式 Claude Codeプラグイン
 - [codex-mcp-server](https://github.com/tuannvm/codex-mcp-server) -- 代替Codex MCPブリッジ（Node.js）
 
